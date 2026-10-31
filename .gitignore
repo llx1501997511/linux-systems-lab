@@ -1,0 +1,36 @@
+# 编译产物
+*.o
+*.a
+*.so
+*.out
+
+# 可执行文件
+00-client/client
+02-epoll-reactor/server
+04-epoll-server/server
+12-threadpool/test
+
+# 编辑器与系统
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# 本地备份
+*.bak*
+*.tar.gz
+
+# 未纳入发布的目录
+_attic-11-threadpool-挖空版-已作废/
+01-threadpool/
+09-udp-echo/
+10-reactor/
+_debug-lab/
+03-multithread-server/
+05-select-server/
+06-multiprocess-server/
+07-poll-server/
+08-etlt-demo/
+
+# 本地配置
+.github/
