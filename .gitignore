@@ -34,3 +34,9 @@ _debug-lab/
 
 # 本地配置
 .github/
+
+# protobuf 生成代码与可执行文件
+13-protobuf/msg.pb.cc
+13-protobuf/msg.pb.h
+13-protobuf/demo
+13-protobuf/*.o

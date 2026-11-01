@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+// 一条简单的消息，用来演示序列化/反序列化的完整链路。
+// 字段编号（= 1、= 2 ...）是字段在字节流里的唯一标识，上线后不可改动。
+message Person {
+    string   name  = 1;
+    int32    id    = 2;
+    string   email = 3;
+    repeated string phone = 4;
+}
