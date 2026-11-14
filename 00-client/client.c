@@ -82,7 +82,6 @@ int main(int argc,char *argv[]){
 
         if((writen(STDOUT_FILENO,buf,(size_t)n))<0)
             break;
-        /* code */
     }
     close(cfd);
     return 0;

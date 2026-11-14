@@ -1,4 +1,4 @@
-// 序列化 / 反序列化的完整链路：填数据 -> 序列化成字节 -> 反序列化还原。
+// 填数据、序列化、反序列化，跑一遍看看。
 #include <iostream>
 #include <string>
 #include "msg.pb.h"

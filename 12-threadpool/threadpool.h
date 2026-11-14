@@ -1,19 +1,9 @@
 #ifndef __THREADPOOL_H_
 #define __THREADPOOL_H_
 
-/* ==================================================================
- * 线程池对外接口
- *
- * 使用者只需要 create / add / destroy 三个函数；
- * all_threadnum 和 busy_threadnum 用于观测运行状态。
- *
- * 任务队列是一段固定大小的环形数组：front 指向队头元素，
- * rear 指向下一个空位。只用 front/rear 无法区分「空」和「满」，
- * 所以额外用 queue_size 记录当前个数。
- *
- * 两把锁分工：lock 保护队列和线程名册，thread_counter 单独保护
- * busy_thr_num，这样统计忙碌数时不用和入队出队抢同一把锁。
- * ================================================================== */
+// 线程池对外接口：create / add / destroy 三个函数，另加两个观测用的计数。
+// 队列是固定大小的环形数组，用 queue_size 区分空和满。
+// 两把锁：lock 管队列和名册，thread_counter 只管 busy_thr_num。
 
 #include <stdlib.h>
 #include <stdio.h>

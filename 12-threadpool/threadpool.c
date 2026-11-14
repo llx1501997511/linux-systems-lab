@@ -11,30 +11,19 @@ static void *threadpool_thread(void *threadpool);
 static void *adjust_thread(void *threadpool);
 static int threadpool_free(threadpool_t *pool);
 
-/* ==================================================================
- * 固定规模的 worker + 一个巡检线程的动态线程池
- *
- * 设计要点：
- *   1. 队列满时 add 阻塞、队列空时 worker 阻塞，两边都靠条件变量等，
- *      不在锁上自旋。
- *   2. 两把锁分工：pool->lock 保护队列和线程名册，thread_counter 单独
- *      保护 busy_thr_num，避免统计忙碌数时和入队出队争同一把锁。
- *   3. threads[] 是槽位池：worker 退出时把自己的槽位置 0，扩容时按 0
- *      找空位复用，否则反复扩缩会把名册耗光。
- *   4. 巡检线程每 DEFAULT_TIME 秒醒一次，按队列积压扩容、按空闲比例
- *      缩容，单次变动上限 DEFAULT_THREAD_VARY。
- * ================================================================== */
+// 固定 3 个 worker 打底，巡检线程每 10 秒看一次积压，超了就扩、闲了就缩。
+// 队列空/满都在条件变量上等；两把锁分工；threads[] 当槽位池用。
 threadpool_t *threadpool_create(int min_thr_size,int max_thr_size,int queue_max_size){
     threadpool_t *pool=NULL;
     int i;
     int rc=0;
     do{
-        /* 第 1 步：malloc 池子本体 */
+        // 分配池子本体
         if((pool=(threadpool_t*)malloc(sizeof(threadpool_t)))==NULL){
             printf("malloc threadpool fail\n");
             break;
         }
-         /* 第 2 步：填 9 个数字（min/max/live/busy/size/front/rear/maxsize/wait_exit/shutdown）*/
+        // 各个计数清零
         pool->queue_front=0;
         pool->queue_rear=0;
         pool->queue_size=0;
@@ -48,10 +37,8 @@ threadpool_t *threadpool_create(int min_thr_size,int max_thr_size,int queue_max_
 
         pool->shutdown=false;
 
-        /* 第 3 步：init 2 把锁 + 2 个条件变量。
-         * 必须排在任何 malloc 之前：后面任何一步失败都会走到
-         * threadpool_free，而它要销毁这四样东西；先 malloc 后 init 的话，
-         * free 就会去销毁一把没 init 过的锁，属于未定义行为。 */
+        // 两把锁 + 两个条件变量。先 init 再 malloc：
+        // 后面哪步失败都会走 free，而 free 要销毁它们。
         rc|=pthread_mutex_init(&(pool->lock),NULL);
         rc|=pthread_mutex_init(&(pool->thread_counter),NULL);
         rc|=pthread_cond_init(&(pool->queue_not_empty),NULL);
@@ -61,26 +48,26 @@ threadpool_t *threadpool_create(int min_thr_size,int max_thr_size,int queue_max_
             break;
         }
 
-        /* 第 4 步：malloc threads[max_thr_num] */
+        // 线程名册
         pool->threads=(pthread_t *)malloc(sizeof(pthread_t)*max_thr_size);
         if(pool->threads==NULL){
             printf("malloc threads fail\n");
             break;
         }
         memset(pool->threads,0,sizeof(pthread_t)*max_thr_size);
-        /* 第 5 步：malloc task_queue[queue_max_size] */
+        // 任务队列
         pool->task_queue=(threadpool_task_t *)malloc(sizeof(threadpool_task_t)*queue_max_size);
         if(pool->task_queue==NULL){
             printf("malloc task_queue fail\n");
             break;
         }
        
-        /* 第 6 步：for 循环 pthread_create 招 min 个工人 */
+        // 先招 min 个工人
         for(i=0;i<min_thr_size;i++){
             pthread_create(&(pool->threads[i]),NULL,threadpool_thread,(void *)pool);
             printf("start thread 0x%lx...\n",(unsigned long)pool->threads[i]);
         }
-        /* 第 7 步：pthread_create 起工头 */
+        // 再起巡检线程
         pthread_create(&(pool->adjust_tid),NULL,adjust_thread,(void *)pool);
         return pool;
     }while(0);
@@ -226,9 +213,8 @@ static void *adjust_thread(void *threadpool){
     return NULL;
 }
 
-/* 五步：挂电闸 -> join 巡检线程 -> 广播叫醒所有 worker
- *       -> 逐个 join worker -> 释放内存
- * 顺序不能换：先叫醒 worker 再等巡检线程，巡检线程可能又招一批人。 */
+// 挂电闸、join 巡检线程、广播叫醒 worker、逐个 join、释放内存。
+// 顺序不能换：巡检线程可能又招人，得先叫醒 worker 再等它。
 int threadpool_destroy(threadpool_t *pool){
     int i;
     

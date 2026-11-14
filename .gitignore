@@ -40,3 +40,6 @@ _debug-lab/
 13-protobuf/msg.pb.h
 13-protobuf/demo
 13-protobuf/*.o
+# 嵌套仓库，父仓库不跟踪
+minidds/
+minidds-reference/

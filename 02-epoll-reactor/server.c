@@ -54,10 +54,8 @@ static void eventset(struct myevent_s* ev,int fd,void (*call_back)(int,int,void 
 }
 
 static void eventadd(int efd,int events,struct myevent_s *ev){
-    // 把事件挂到 epoll 上，或者改它正在监听的事件。
-    // op 由 status 决定：已经在树上走 MOD，不在树上走 ADD。
-    // data.ptr 存 ev 本身，epoll_wait 回来才能从事件反查回是哪个 fd。
-    // 成功后要把 events 和 status 写回 ev，否则下一次判断会错。
+    // 挂上去或者改监听的事件。status==1 就 MOD，否则 ADD。
+    // data.ptr 存 ev 自己，wait 回来反查用。
    int op=(ev->status==1)?EPOLL_CTL_MOD:EPOLL_CTL_ADD;
    struct epoll_event epv;
    memset(&epv,0,sizeof(epv));
@@ -89,8 +87,7 @@ static void eventdel(int efd,struct myevent_s *ev){//需要红黑树句柄efd,�
     ev->status=0;
 
     epoll_ctl(efd,EPOLL_CTL_DEL,ev->fd,&epv);
-    // DEL 只表示不再关心这个 fd 的事件，不等于 close。
-    // status 前面已置 0，下次 eventadd 会重新走 ADD 挂上去。
+    // DEL 只是不关心这个 fd 了，不等于 close。
 
 }
 
@@ -284,9 +281,7 @@ int main(int argc,char *argv[]){
     }
     close(g_efd);
     return 0;
-    // epoll_create -> initlistensocket -> 把 lfd 挂上
-    // while(1)：epoll_wait -> 遍历就绪事件 -> 判断事件位 -> 回调
-    // 事件判断必须用 &，不能用 ==：同一个 fd 可能同时可读可写，
-    // 组合之后 events[i].events 是多个标志位或起来的值，用 == 会漏掉。
+    // epoll_create → initlistensocket → while(1){ epoll_wait → 遍历 → 判断事件位 → 回调 }
+    // 判断事件位用 & 不用 ==，一个 fd 可能同时可读可写。
    
 }
