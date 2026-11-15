@@ -1,4 +1,4 @@
-# cpp-systems-lab
+# linux-systems-lab
 
 Linux 系统编程练习，跟着课敲的：TCP 客户端、epoll 服务器、epoll 反应堆、动态线程池、protobuf。
 
